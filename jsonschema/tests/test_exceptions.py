@@ -1054,6 +1054,50 @@ class TestErrorInitReprStr(TestCase):
         self.assertIn(repr(instance), str(error))
 
 
+class TestErrorContext(TestCase):
+    def test_context_sets_parent_for_each_iterable(self):
+        for error_class in (
+            exceptions.ValidationError,
+            exceptions.SchemaError,
+        ):
+            for context_type in (list, tuple, iter):
+                with self.subTest(
+                    error_class=error_class,
+                    context_type=context_type,
+                ):
+                    children = [
+                        error_class(
+                            "child",
+                            path=["name"],
+                            schema_path=[0, "type"],
+                        ),
+                        error_class(
+                            "sibling",
+                            path=["tags", 0],
+                            schema_path=[1, "items"],
+                        ),
+                    ]
+                    parent = error_class(
+                        "parent",
+                        path=["record"],
+                        schema_path=["properties", "record", "anyOf"],
+                        context=context_type(children),
+                    )
+                    self.assertEqual(parent.context, children)
+                    for child in children:
+                        self.assertIs(child.parent, parent)
+                        self.assertEqual(
+                            list(child.absolute_path),
+                            ["record", *child.path],
+                        )
+                        self.assertEqual(
+                            list(child.absolute_schema_path),
+                            [*parent.schema_path, *child.schema_path],
+                        )
+                    self.assertEqual(children[0].json_path, "$.record.name")
+                    self.assertEqual(children[1].json_path, "$.record.tags[0]")
+
+
 class TestHashable(TestCase):
     def test_hashable(self):
         {exceptions.ValidationError("")}

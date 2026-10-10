@@ -95,7 +95,7 @@ class _Error(Exception):
         self.parent = parent
         self._type_checker = type_checker
 
-        for error in context:
+        for error in self.context:
             error.parent = self
 
     def __repr__(self) -> str:
